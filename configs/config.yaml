@@ -1,0 +1,98 @@
+project:
+  name: "KnightSight ANPR EdgeVision"
+  version: "0.1.0"
+
+io:
+  input_type: "video"
+  output_dir: "outputs"
+  save_debug_frames: false
+
+models:
+  vehicle_detector:
+    backend: "ultralytics"
+    name: "yolov8n.pt"
+    input_size: 640
+    confidence: 0.15
+    iou: 0.65
+    device: "cpu"
+    vehicle_class_ids: [0, 2, 3, 5, 7]
+  plate_detector:
+    backend: "ultralytics"
+    name: "yolov8n.pt"
+    input_size: 320
+    confidence: 0.1
+    iou: 0.45
+    device: "cpu"
+  ocr:
+    backend: "paddleocr"
+    model_path: ""
+    use_angle_cls: false
+    lang: "en"
+    det: true
+    rec: true
+    use_gpu: false
+
+pipeline:
+  frame_skip:
+    initial: 1
+    max_skip: 6
+    min_skip: 1
+    adaptive_enabled: true
+  roi:
+    vehicle_bottom_ratio: 0.40
+    plate_padding: 0.08
+  preprocessing:
+    enabled: true
+    brightness_threshold: 95.0
+    blur_threshold: 70.0
+    clahe:
+      clip_limit: 2.0
+      tile_grid_size: 8
+    glare_reduction:
+      kernel_size: 3
+  stabilization:
+    history_size: 12
+    sliding_window_frames: 12
+    min_frames_before_unknown: 8
+    min_confidence: 0.25
+    regex: "^[A-Z0-9]{3,15}$"
+    substitutions:
+      "O": "0"
+      "I": "1"
+      "Z": "2"
+
+plate_localization:
+  enabled: true
+  min_aspect_ratio: 2.0
+  max_aspect_ratio: 6.5
+  min_area: 250
+  canny_threshold1: 50
+  canny_threshold2: 150
+  fallback_to_bottom_roi: true
+
+performance:
+  target_latency_ms: 150.0
+  hard_latency_cap_ms: 250.0
+  max_model_size_mb: 100.0
+  max_pipeline_flops_g: 5.0
+  min_ocr_accuracy: 0.80
+  min_robustness_retention: 0.70
+  max_resolution:
+    width: 640
+    height: 640
+  fallback:
+    disable_heavy_preprocessing_on_overcap: true
+    increase_skip_on_overcap: true
+
+metrics:
+  log_interval_frames: 10
+  include_raw_vs_stabilized: true
+  report_fields:
+    - "total_latency_ms"
+    - "detection_latency_ms"
+    - "ocr_latency_ms"
+    - "fps"
+    - "model_size_mb"
+    - "estimated_flops_g"
+    - "ocr_raw"
+    - "ocr_stabilized"

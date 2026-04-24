@@ -1,0 +1,7 @@
+ultralytics
+paddleocr
+opencv-python
+streamlit
+onnxruntime
+numpy
+PyYAML
